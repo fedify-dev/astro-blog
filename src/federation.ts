@@ -108,6 +108,7 @@ federation
   .on(Undo, async (ctx, undo) => {
     const object = await undo.getObject(ctx);
     if (!(object instanceof Follow)) return;
+    if (object.objectId?.href !== ctx.getActorUri(BLOG_IDENTIFIER).href) return;
     if (undo.actorId == null) return;
     removeFollower(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });

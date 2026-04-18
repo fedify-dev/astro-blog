@@ -122,6 +122,8 @@ federation
     const parsed = ctx.parseUri(replyTargetId);
     if (parsed?.type !== "object" || parsed.class !== Article) return;
     const { slug } = parsed.values;
+    const allPosts = await getCollection("posts");
+    if (!allPosts.some((p) => p.id === slug && !p.data.draft)) return;
     const author = await create.getActor(ctx);
     if (author == null || author.id == null) return;
     const authorName =

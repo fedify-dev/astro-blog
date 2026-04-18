@@ -17,11 +17,12 @@ export const onRequest: MiddlewareHandler = (context, next) => {
   if (proto != null || host != null) {
     context.request = new Request(url.toString(), context.request);
   }
-  if (!synced) {
+  if (!synced && context.request.headers.get("x-forwarded-host") != null) {
     synced = true;
     const ctx = federation.createContext(context.request, undefined);
     syncPosts(ctx).catch((err) => {
       console.error("Failed to sync posts:", err);
+      synced = false;
     });
   }
   return fedifyMiddleware(federation, (_ctx) => undefined)(context, next);

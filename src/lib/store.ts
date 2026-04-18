@@ -92,3 +92,80 @@ export function getFollowers(): { id: URL; inboxId: URL }[] {
       inboxId: new URL(inbox_url),
     }));
 }
+
+export interface Comment {
+  id: string;
+  postId: string;
+  authorUrl: string;
+  authorName: string;
+  content: string;
+  publishedAt: string;
+}
+
+export function addComment(comment: Comment): void {
+  db.run(
+    `INSERT OR REPLACE INTO comments
+     (id, post_id, author_url, author_name, content, published_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      comment.id,
+      comment.postId,
+      comment.authorUrl,
+      comment.authorName,
+      comment.content,
+      comment.publishedAt,
+    ],
+  );
+}
+
+export function updateComment(
+  id: string,
+  authorName: string,
+  content: string,
+): void {
+  db.run(`UPDATE comments SET author_name = ?, content = ? WHERE id = ?`, [
+    authorName,
+    content,
+    id,
+  ]);
+}
+
+export function getCommentAuthorUrl(id: string): string | null {
+  return (
+    db
+      .query<{ author_url: string }, [string]>(
+        `SELECT author_url FROM comments WHERE id = ?`,
+      )
+      .get(id)?.author_url ?? null
+  );
+}
+
+export function deleteComment(id: string): void {
+  db.run(`DELETE FROM comments WHERE id = ?`, [id]);
+}
+
+export function getCommentsByPost(postId: string): Comment[] {
+  return db
+    .query<
+      {
+        id: string;
+        author_url: string;
+        author_name: string;
+        content: string;
+        published_at: string;
+      },
+      [string]
+    >(
+      `SELECT id, author_url, author_name, content, published_at
+       FROM comments WHERE post_id = ? ORDER BY published_at`,
+    )
+    .all(postId)
+    .map((r) => ({
+      id: r.id,
+      postId,
+      authorUrl: r.author_url,
+      authorName: r.author_name,
+      content: r.content,
+      publishedAt: r.published_at,
+    }));
+}

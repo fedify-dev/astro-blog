@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from "astro:content";
 import Layout from "../../layouts/Layout.astro";
+import { getCommentsByPost } from "../../lib/store.ts";
 
 const { slug } = Astro.params;
 const posts = await getCollection("posts");
@@ -11,6 +12,7 @@ if (!post || post.data.draft) {
 }
 
 const { Content } = await render(post);
+const comments = getCommentsByPost(slug);
 ---
 
 <Layout title={post.data.title} description={post.data.description}>
@@ -34,6 +36,37 @@ const { Content } = await render(post);
       <a href="/">&larr; Back to all posts</a>
     </footer>
   </article>
+
+  <section class="comments">
+    <h2>{comments.length} {comments.length === 1 ? "comment" : "comments"}</h2>
+    {
+      comments.length === 0 ? (
+        <p class="no-comments">No comments yet.</p>
+      ) : (
+        <ol class="comment-list">
+          {comments.map((comment) => (
+            <li class="comment">
+              <div class="comment-meta">
+                <a href={comment.authorUrl} rel="noopener noreferrer">
+                  {comment.authorName}
+                </a>
+                <time datetime={comment.publishedAt}>
+                  {new Date(comment.publishedAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </time>
+              </div>
+              {/* Note: comment.content is HTML from remote servers.
+                  Sanitize before rendering in production! */}
+              <div class="comment-content" set:html={comment.content} />
+            </li>
+          ))}
+        </ol>
+      )
+    }
+  </section>
 </Layout>
 
 <style>
@@ -54,5 +87,55 @@ const { Content } = await render(post);
     padding-top: 1rem;
     border-top: 1px solid #e5e5e5;
     font-size: 0.875rem;
+  }
+
+  .comments {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e5e5;
+  }
+
+  .comments h2 {
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+  }
+
+  .no-comments {
+    color: #666;
+  }
+
+  .comment-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .comment {
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: 4px;
+  }
+
+  .comment-meta {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .comment-meta a {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .comment-meta time {
+    color: #666;
+  }
+
+  .comment-content :global(p) {
+    margin: 0;
   }
 </style>

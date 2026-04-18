@@ -29,4 +29,15 @@ db.run(`
   )
 `);
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS comments (
+    id           TEXT PRIMARY KEY,
+    post_id      TEXT NOT NULL,
+    author_url   TEXT NOT NULL,
+    author_name  TEXT NOT NULL,
+    content      TEXT NOT NULL,
+    published_at TEXT NOT NULL
+  )
+`);
+
 export default db;

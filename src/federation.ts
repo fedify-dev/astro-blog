@@ -8,19 +8,27 @@ import {
 import {
   Accept,
   Article,
+  Create,
+  Delete,
   Endpoints,
   Follow,
+  Note,
   Person,
   Undo,
+  Update,
 } from "@fedify/vocab";
 import { Temporal } from "@js-temporal/polyfill";
 import { getLogger } from "@logtape/logtape";
 import {
+  addComment,
   addFollower,
+  deleteComment,
+  getCommentAuthorUrl,
   getFollowers,
   getKeyPairs,
   removeFollower,
   saveKeyPairs,
+  updateComment,
 } from "./lib/store.ts";
 
 const logger = getLogger("astro-blog");
@@ -103,6 +111,55 @@ federation
     if (undo.actorId == null) return;
     removeFollower(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
+  })
+  .on(Create, async (ctx, create) => {
+    const object = await create.getObject(ctx);
+    if (!(object instanceof Note)) return;
+    if (object.id == null || create.actorId == null) return;
+    const replyTargetId = object.replyTargetId;
+    if (replyTargetId == null) return;
+    const parsed = ctx.parseUri(replyTargetId);
+    if (parsed?.type !== "object" || parsed.class !== Article) return;
+    const { slug } = parsed.values;
+    const author = await create.getActor(ctx);
+    if (author == null || author.id == null) return;
+    const authorName =
+      author.name?.toString() ??
+      author.preferredUsername?.toString() ??
+      author.id.host;
+    addComment({
+      id: object.id.href,
+      postId: slug,
+      authorUrl: author.id.href,
+      authorName,
+      content: object.content?.toString() ?? "",
+      publishedAt: (object.published ?? Temporal.Now.instant()).toString(),
+    });
+    logger.info("New comment on /{slug} by {author}", {
+      slug,
+      author: author.id.href,
+    });
+  })
+  .on(Update, async (ctx, update) => {
+    const object = await update.getObject(ctx);
+    if (!(object instanceof Note)) return;
+    if (object.id == null || update.actorId == null) return;
+    const existing = getCommentAuthorUrl(object.id.href);
+    if (existing == null || existing !== update.actorId.href) return;
+    const author = await update.getActor(ctx);
+    const authorName =
+      author?.name?.toString() ??
+      author?.preferredUsername?.toString() ??
+      update.actorId.host;
+    updateComment(object.id.href, authorName, object.content?.toString() ?? "");
+  })
+  .on(Delete, async (_ctx, delete_) => {
+    if (delete_.actorId == null) return;
+    const objectId = delete_.objectId;
+    if (objectId == null) return;
+    const existing = getCommentAuthorUrl(objectId.href);
+    if (existing == null || existing !== delete_.actorId.href) return;
+    deleteComment(objectId.href);
   });
 
 federation.setFollowersDispatcher(

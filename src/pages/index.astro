@@ -1,8 +1,68 @@
 ---
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import { getCollection } from "astro:content";
+import Layout from "../layouts/Layout.astro";
+
+const allPosts = await getCollection("posts");
+const posts = allPosts
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 ---
 
 <Layout>
-	<Welcome />
+  <h1>Blog</h1>
+  <p class="tagline">A federated blog powered by Astro and Fedify.</p>
+  <ul class="post-list">
+    {
+      posts.map((post) => (
+        <li class="post-item">
+          <time datetime={post.data.pubDate.toISOString()}>
+            {post.data.pubDate.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </time>
+          <h2>
+            <a href={`/posts/${post.id}`}>{post.data.title}</a>
+          </h2>
+          <p>{post.data.description}</p>
+        </li>
+      ))
+    }
+  </ul>
 </Layout>
+
+<style>
+  h1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .tagline {
+    color: #555;
+    margin-bottom: 2rem;
+  }
+
+  .post-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .post-item time {
+    font-size: 0.875rem;
+    color: #666;
+  }
+
+  .post-item h2 {
+    margin-top: 0.25rem;
+    font-size: 1.25rem;
+  }
+
+  .post-item p {
+    color: #444;
+    margin-top: 0.25rem;
+    margin-bottom: 0;
+  }
+</style>

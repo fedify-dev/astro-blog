@@ -7,6 +7,9 @@
       }
     }
   },
+  "files": {
+    "includes": ["**", "!.astro"]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -17,5 +20,18 @@
     "rules": {
       "recommended": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          }
+        }
+      }
+    }
+  ]
 }

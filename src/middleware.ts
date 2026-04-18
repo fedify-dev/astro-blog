@@ -19,11 +19,7 @@ export const onRequest: MiddlewareHandler = (context, next) => {
   }
   if (!synced) {
     synced = true;
-    const origin = process.env.ORIGIN;
-    const baseReq = origin
-      ? new Request(new URL("/", origin).toString())
-      : context.request;
-    const ctx = federation.createContext(baseReq, undefined);
+    const ctx = federation.createContext(context.request, undefined);
     syncPosts(ctx).catch((err) => {
       console.error("Failed to sync posts:", err);
     });

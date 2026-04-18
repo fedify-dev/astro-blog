@@ -4,7 +4,7 @@
     "": {
       "name": "fedify-astro-init",
       "dependencies": {
-        "@astrojs/node": "^9.5.4",
+        "@astrojs/node": "^9.5.5",
         "@fedify/astro": "^2.2.0-dev.787",
         "@fedify/fedify": "^2.2.0-dev.787",
         "@fedify/vocab": "^2.2.0-dev.787",

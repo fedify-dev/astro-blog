@@ -6,8 +6,12 @@ import { BLOG_IDENTIFIER } from "../federation.ts";
 import db from "./db.ts";
 import { getFollowers } from "./store.ts";
 
-async function hashPost(title: string, body: string): Promise<string> {
-  const data = new TextEncoder().encode(`${title}\n${body}`);
+async function hashPost(
+  title: string,
+  description: string,
+  body: string,
+): Promise<string> {
+  const data = new TextEncoder().encode(`${title}\n${description}\n${body}`);
   const buf = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(buf)]
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -37,7 +41,11 @@ export async function syncPosts(ctx: RequestContext<unknown>): Promise<void> {
     currentIds.add(slug);
 
     const articleId = ctx.getObjectUri(Article, { slug });
-    const contentHash = await hashPost(post.data.title, post.body ?? "");
+    const contentHash = await hashPost(
+      post.data.title,
+      post.data.description,
+      post.body ?? "",
+    );
 
     const article = new Article({
       id: articleId,

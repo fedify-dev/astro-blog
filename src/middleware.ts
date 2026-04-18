@@ -1,7 +1,10 @@
 import { fedifyMiddleware } from "@fedify/astro";
 import type { MiddlewareHandler } from "astro";
 import federation from "./federation.ts";
+import { syncPosts } from "./lib/publish.ts";
 import "./logging.ts";
+
+let synced = false;
 
 export const onRequest: MiddlewareHandler = (context, next) => {
   // Rewrite the request URL scheme based on X-Forwarded-Proto when running
@@ -11,6 +14,13 @@ export const onRequest: MiddlewareHandler = (context, next) => {
   if (proto != null && url.protocol !== `${proto}:`) {
     url.protocol = proto;
     context.request = new Request(url.toString(), context.request);
+  }
+  if (!synced) {
+    synced = true;
+    const ctx = federation.createContext(context.request, undefined);
+    syncPosts(ctx).catch((err) => {
+      console.error("Failed to sync posts:", err);
+    });
   }
   return fedifyMiddleware(federation, (_ctx) => undefined)(context, next);
 };

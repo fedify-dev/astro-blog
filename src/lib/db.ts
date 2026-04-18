@@ -19,4 +19,14 @@ db.run(`
   )
 `);
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS posts (
+    id           TEXT PRIMARY KEY,
+    title        TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    published_at TEXT NOT NULL
+  )
+`);
+
 export default db;

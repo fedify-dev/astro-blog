@@ -1,10 +1,19 @@
+import { getCollection } from "astro:content";
 import {
   createFederation,
   generateCryptoKeyPair,
   InProcessMessageQueue,
   MemoryKvStore,
 } from "@fedify/fedify";
-import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
+import {
+  Accept,
+  Article,
+  Endpoints,
+  Follow,
+  Person,
+  Undo,
+} from "@fedify/vocab";
+import { Temporal } from "@js-temporal/polyfill";
 import { getLogger } from "@logtape/logtape";
 import {
   addFollower,
@@ -101,6 +110,25 @@ federation.setFollowersDispatcher(
   (_ctx, identifier) => {
     if (identifier !== BLOG_IDENTIFIER) return null;
     return { items: getFollowers() };
+  },
+);
+
+federation.setObjectDispatcher(
+  Article,
+  "/posts/{slug}",
+  async (ctx, { slug }) => {
+    const allPosts = await getCollection("posts");
+    const post = allPosts.find((p) => p.id === slug && !p.data.draft);
+    if (!post) return null;
+    return new Article({
+      id: ctx.getObjectUri(Article, { slug }),
+      attribution: ctx.getActorUri(BLOG_IDENTIFIER),
+      name: post.data.title,
+      summary: post.data.description,
+      content: `<p>${post.data.description}</p>`,
+      url: new URL(`/posts/${slug}`, ctx.url),
+      published: Temporal.Instant.from(post.data.pubDate.toISOString()),
+    });
   },
 );
 

@@ -6,7 +6,13 @@ import {
 } from "@fedify/fedify";
 import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
-import { followers, keyPairs } from "./lib/store.ts";
+import {
+  addFollower,
+  getFollowers,
+  getKeyPairs,
+  removeFollower,
+  saveKeyPairs,
+} from "./lib/store.ts";
 
 const logger = getLogger("astro-blog");
 
@@ -44,14 +50,14 @@ federation
   })
   .setKeyPairsDispatcher(async (_ctx, identifier) => {
     if (identifier !== BLOG_IDENTIFIER) return [];
-    const stored = keyPairs.get(identifier);
+    const stored = await getKeyPairs(identifier);
     if (stored) return stored;
     const [rsaKey, ed25519Key] = await Promise.all([
       generateCryptoKeyPair("RSASSA-PKCS1-v1_5"),
       generateCryptoKeyPair("Ed25519"),
     ]);
     const kp = [rsaKey, ed25519Key];
-    keyPairs.set(identifier, kp);
+    await saveKeyPairs(identifier, kp);
     return kp;
   });
 
@@ -67,7 +73,7 @@ federation
     if (follower == null || follower.id == null || follower.inboxId == null) {
       return;
     }
-    followers.set(follower.id.href, follower.inboxId.href);
+    addFollower(follower.id.href, follower.inboxId.href);
     logger.info("New follower: {follower}", { follower: follower.id.href });
     await ctx.sendActivity(
       { identifier: BLOG_IDENTIFIER },
@@ -86,7 +92,7 @@ federation
     const object = await undo.getObject(ctx);
     if (!(object instanceof Follow)) return;
     if (undo.actorId == null) return;
-    followers.delete(undo.actorId.href);
+    removeFollower(undo.actorId.href);
     logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
   });
 
@@ -94,11 +100,7 @@ federation.setFollowersDispatcher(
   "/users/{identifier}/followers",
   (_ctx, identifier) => {
     if (identifier !== BLOG_IDENTIFIER) return null;
-    const items = Array.from(followers.entries()).map(([id, inboxId]) => ({
-      id: new URL(id),
-      inboxId: new URL(inboxId),
-    }));
-    return { items };
+    return { items: getFollowers() };
   },
 );
 

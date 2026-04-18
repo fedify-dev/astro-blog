@@ -2,14 +2,14 @@
 import { getCollection } from "astro:content";
 import { BLOG_IDENTIFIER, BLOG_NAME } from "../federation.ts";
 import Layout from "../layouts/Layout.astro";
-import { followers } from "../lib/store.ts";
+import { countFollowers } from "../lib/store.ts";
 
 const allPosts = await getCollection("posts");
 const posts = allPosts
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
-const followerCount = followers.size;
+const followerCount = countFollowers();
 const handle = `@${BLOG_IDENTIFIER}@${Astro.url.host}`;
 ---
 

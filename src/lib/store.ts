@@ -1,15 +1,94 @@
-// In-memory store for key pairs and followers.
-// Uses globalThis to persist across Astro module reloads in dev mode.
-// This data is lost when the server restarts — we'll fix that in a later
-// chapter when we introduce SQLite.
+import db from "./db.ts";
 
-declare global {
-  var _keyPairs: Map<string, CryptoKeyPair[]>; // eslint-disable-line no-var
-  var _followers: Map<string, string>; // eslint-disable-line no-var
+export async function getKeyPairs(
+  identifier: string,
+): Promise<CryptoKeyPair[] | null> {
+  const rows = db
+    .query<
+      { algorithm: string; private_key: Uint8Array; public_key: Uint8Array },
+      [string]
+    >(
+      `SELECT algorithm, private_key, public_key
+       FROM key_pairs WHERE identifier = ? ORDER BY rowid`,
+    )
+    .all(identifier);
+  if (rows.length === 0) return null;
+  return Promise.all(
+    rows.map(async ({ algorithm, private_key, public_key }) => {
+      const alg: AlgorithmIdentifier | RsaHashedImportParams =
+        algorithm === "RSASSA-PKCS1-v1_5"
+          ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }
+          : algorithm;
+      const [privateKey, publicKey] = await Promise.all([
+        crypto.subtle.importKey(
+          "pkcs8",
+          private_key as unknown as Uint8Array<ArrayBuffer>,
+          alg,
+          true,
+          ["sign"],
+        ),
+        crypto.subtle.importKey(
+          "spki",
+          public_key as unknown as Uint8Array<ArrayBuffer>,
+          alg,
+          true,
+          ["verify"],
+        ),
+      ]);
+      return { privateKey, publicKey };
+    }),
+  );
 }
 
-if (globalThis._keyPairs == null) globalThis._keyPairs = new Map();
-if (globalThis._followers == null) globalThis._followers = new Map();
+export async function saveKeyPairs(
+  identifier: string,
+  kp: CryptoKeyPair[],
+): Promise<void> {
+  const insert = db.prepare(
+    `INSERT OR REPLACE INTO key_pairs
+     (identifier, algorithm, private_key, public_key) VALUES (?, ?, ?, ?)`,
+  );
+  for (const { privateKey, publicKey } of kp) {
+    const [privateKeyData, publicKeyData] = await Promise.all([
+      crypto.subtle.exportKey("pkcs8", privateKey),
+      crypto.subtle.exportKey("spki", publicKey),
+    ]);
+    insert.run(
+      identifier,
+      privateKey.algorithm.name,
+      new Uint8Array(privateKeyData),
+      new Uint8Array(publicKeyData),
+    );
+  }
+}
 
-export const keyPairs: Map<string, CryptoKeyPair[]> = globalThis._keyPairs;
-export const followers: Map<string, string> = globalThis._followers;
+export function addFollower(actorId: string, inboxUrl: string): void {
+  db.run(
+    `INSERT OR REPLACE INTO followers (actor_id, inbox_url) VALUES (?, ?)`,
+    [actorId, inboxUrl],
+  );
+}
+
+export function removeFollower(actorId: string): void {
+  db.run(`DELETE FROM followers WHERE actor_id = ?`, [actorId]);
+}
+
+export function countFollowers(): number {
+  return (
+    db
+      .query<{ count: number }, []>(`SELECT COUNT(*) AS count FROM followers`)
+      .get()?.count ?? 0
+  );
+}
+
+export function getFollowers(): { id: URL; inboxId: URL }[] {
+  return db
+    .query<{ actor_id: string; inbox_url: string }, []>(
+      `SELECT actor_id, inbox_url FROM followers`,
+    )
+    .all()
+    .map(({ actor_id, inbox_url }) => ({
+      id: new URL(actor_id),
+      inboxId: new URL(inbox_url),
+    }));
+}

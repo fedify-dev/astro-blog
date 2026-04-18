@@ -1,0 +1,30 @@
+{
+  "name": "astro-blog",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "bunx astro dev",
+    "build": "bunx astro build",
+    "preview": "bunx astro preview",
+    "astro": "astro",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.5.4",
+    "@fedify/astro": "^2.2.0-dev.787",
+    "@fedify/fedify": "^2.2.0-dev.787",
+    "@fedify/vocab": "^2.2.0-dev.787",
+    "@logtape/logtape": "^2.0.5",
+    "astro": "^6.1.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@fedify/lint": "2.1.5",
+    "eslint": "^9.0.0",
+    "typescript": "^5.9.3",
+    "@types/node": "^22.17.0"
+  }
+}

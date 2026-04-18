@@ -22,7 +22,6 @@ const AS_PUBLIC = new URL("https://www.w3.org/ns/activitystreams#Public");
 
 export async function syncPosts(ctx: RequestContext<unknown>): Promise<void> {
   const recipients = getFollowers();
-  if (recipients.length === 0) return;
 
   const allPosts = await getCollection("posts");
   const current = allPosts.filter((p) => !p.data.draft);
@@ -58,16 +57,18 @@ export async function syncPosts(ctx: RequestContext<unknown>): Promise<void> {
     });
 
     if (!stored.has(slug)) {
-      await ctx.sendActivity(
-        { identifier: BLOG_IDENTIFIER },
-        recipients,
-        new Create({
-          id: new URL(`#create-${Date.now()}`, articleId),
-          actor: actorUri,
-          to: AS_PUBLIC,
-          object: article,
-        }),
-      );
+      if (recipients.length > 0) {
+        await ctx.sendActivity(
+          { identifier: BLOG_IDENTIFIER },
+          recipients,
+          new Create({
+            id: new URL(`#create-${Date.now()}`, articleId),
+            actor: actorUri,
+            to: AS_PUBLIC,
+            object: article,
+          }),
+        );
+      }
       db.run(
         `INSERT INTO posts (id, title, url, content_hash, published_at)
          VALUES (?, ?, ?, ?, ?)`,
@@ -80,16 +81,18 @@ export async function syncPosts(ctx: RequestContext<unknown>): Promise<void> {
         ],
       );
     } else if (stored.get(slug)?.content_hash !== contentHash) {
-      await ctx.sendActivity(
-        { identifier: BLOG_IDENTIFIER },
-        recipients,
-        new Update({
-          id: new URL(`#update-${Date.now()}`, articleId),
-          actor: actorUri,
-          to: AS_PUBLIC,
-          object: article,
-        }),
-      );
+      if (recipients.length > 0) {
+        await ctx.sendActivity(
+          { identifier: BLOG_IDENTIFIER },
+          recipients,
+          new Update({
+            id: new URL(`#update-${Date.now()}`, articleId),
+            actor: actorUri,
+            to: AS_PUBLIC,
+            object: article,
+          }),
+        );
+      }
       db.run(
         `UPDATE posts SET title = ?, content_hash = ?, published_at = ?
          WHERE id = ?`,
@@ -100,16 +103,18 @@ export async function syncPosts(ctx: RequestContext<unknown>): Promise<void> {
 
   for (const [slug, row] of stored) {
     if (!currentIds.has(slug)) {
-      await ctx.sendActivity(
-        { identifier: BLOG_IDENTIFIER },
-        recipients,
-        new Delete({
-          id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
-          actor: actorUri,
-          to: AS_PUBLIC,
-          object: new URL(row.url),
-        }),
-      );
+      if (recipients.length > 0) {
+        await ctx.sendActivity(
+          { identifier: BLOG_IDENTIFIER },
+          recipients,
+          new Delete({
+            id: new URL(`#delete-${slug}-${Date.now()}`, actorUri),
+            actor: actorUri,
+            to: AS_PUBLIC,
+            object: new URL(row.url),
+          }),
+        );
+      }
       db.run("DELETE FROM posts WHERE id = ?", [slug]);
     }
   }

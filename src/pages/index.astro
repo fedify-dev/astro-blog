@@ -1,16 +1,24 @@
 ---
 import { getCollection } from "astro:content";
+import { BLOG_IDENTIFIER, BLOG_NAME } from "../federation.ts";
 import Layout from "../layouts/Layout.astro";
+import { followers } from "../lib/store.ts";
 
 const allPosts = await getCollection("posts");
 const posts = allPosts
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const followerCount = followers.size;
+const handle = `@${BLOG_IDENTIFIER}@${Astro.url.host}`;
 ---
 
 <Layout>
-  <h1>Blog</h1>
-  <p class="tagline">A federated blog powered by Astro and Fedify.</p>
+  <h1>{BLOG_NAME}</h1>
+  <p class="tagline">
+    <a href={`/users/${BLOG_IDENTIFIER}`}>{handle}</a>
+    · {followerCount} {followerCount === 1 ? "follower" : "followers"}
+  </p>
   <ul class="post-list">
     {
       posts.map((post) => (

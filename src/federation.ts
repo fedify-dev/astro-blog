@@ -4,9 +4,9 @@ import {
   InProcessMessageQueue,
   MemoryKvStore,
 } from "@fedify/fedify";
-import { Endpoints, Person } from "@fedify/vocab";
+import { Accept, Endpoints, Follow, Person, Undo } from "@fedify/vocab";
 import { getLogger } from "@logtape/logtape";
-import { keyPairs } from "./lib/store.ts";
+import { followers, keyPairs } from "./lib/store.ts";
 
 const logger = getLogger("astro-blog");
 
@@ -55,13 +55,50 @@ federation
     return kp;
   });
 
-federation.setInboxListeners("/users/{identifier}/inbox", "/inbox");
+federation
+  .setInboxListeners("/users/{identifier}/inbox", "/inbox")
+  .on(Follow, async (ctx, follow) => {
+    if (follow.id == null || follow.actorId == null) return;
+    const parsed = ctx.parseUri(follow.objectId);
+    if (parsed?.type !== "actor" || parsed.identifier !== BLOG_IDENTIFIER) {
+      return;
+    }
+    const follower = await follow.getActor(ctx);
+    if (follower == null || follower.id == null || follower.inboxId == null) {
+      return;
+    }
+    followers.set(follower.id.href, follower.inboxId.href);
+    logger.info("New follower: {follower}", { follower: follower.id.href });
+    await ctx.sendActivity(
+      { identifier: BLOG_IDENTIFIER },
+      follower,
+      new Accept({
+        id: new URL(
+          `#accepts/${follower.id.href}`,
+          ctx.getActorUri(BLOG_IDENTIFIER),
+        ),
+        actor: ctx.getActorUri(BLOG_IDENTIFIER),
+        object: follow,
+      }),
+    );
+  })
+  .on(Undo, async (ctx, undo) => {
+    const object = await undo.getObject(ctx);
+    if (!(object instanceof Follow)) return;
+    if (undo.actorId == null) return;
+    followers.delete(undo.actorId.href);
+    logger.info("Unfollowed: {actor}", { actor: undo.actorId.href });
+  });
 
 federation.setFollowersDispatcher(
   "/users/{identifier}/followers",
   (_ctx, identifier) => {
     if (identifier !== BLOG_IDENTIFIER) return null;
-    return { items: [] };
+    const items = Array.from(followers.entries()).map(([id, inboxId]) => ({
+      id: new URL(id),
+      inboxId: new URL(inboxId),
+    }));
+    return { items };
   },
 );
 

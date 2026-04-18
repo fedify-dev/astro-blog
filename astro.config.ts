@@ -7,4 +7,9 @@ export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
   adapter: node({ mode: "standalone" }),
+  vite: {
+    server: {
+      allowedHosts: true,
+    },
+  },
 });

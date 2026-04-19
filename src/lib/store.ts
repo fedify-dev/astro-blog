@@ -24,14 +24,14 @@ export async function getKeyPairs(
           "pkcs8",
           private_key as unknown as Uint8Array<ArrayBuffer>,
           alg,
-          true,
+          false,
           ["sign"],
         ),
         crypto.subtle.importKey(
           "spki",
           public_key as unknown as Uint8Array<ArrayBuffer>,
           alg,
-          true,
+          false,
           ["verify"],
         ),
       ]);

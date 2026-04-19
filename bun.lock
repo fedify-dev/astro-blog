@@ -8,6 +8,7 @@
         "@fedify/astro": "^2.2.0-dev.787",
         "@fedify/fedify": "^2.2.0-dev.787",
         "@fedify/vocab": "^2.2.0-dev.787",
+        "@js-temporal/polyfill": "^0.5.1",
         "@logtape/logtape": "^2.0.5",
         "astro": "^6.1.7",
       },

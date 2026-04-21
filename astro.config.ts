@@ -13,6 +13,9 @@ export default defineConfig({
     allowedDomains: [{}],
   },
   vite: {
+    ssr: {
+      external: ["bun:sqlite"],
+    },
     server: {
       allowedHosts: true,
     },

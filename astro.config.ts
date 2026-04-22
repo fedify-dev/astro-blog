@@ -1,21 +1,18 @@
-import node from "@astrojs/node";
 import { fedifyIntegration } from "@fedify/astro";
+import bun from "@nurodev/astro-bun";
 import { defineConfig } from "astro/config";
 
 // https://astro.build/config
 export default defineConfig({
   integrations: [fedifyIntegration()],
   output: "server",
-  adapter: node({ mode: "standalone" }),
+  adapter: bun(),
   security: {
     // Trust any forwarded host so the server works correctly behind a
     // reverse proxy or tunnel (e.g. `fedify tunnel`, Cloudflare Tunnel).
     allowedDomains: [{}],
   },
   vite: {
-    ssr: {
-      external: ["bun:sqlite"],
-    },
     server: {
       allowedHosts: true,
     },
